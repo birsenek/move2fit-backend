@@ -1,0 +1,71 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: ${DB_CONTAINER_NAME:-mysql_fitness}
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT_EXTERNAL:-3306}:${MYSQL_PORT_INTERNAL:-3306}"
+    environment:
+      - MYSQL_DATABASE=${DB_NAME:-db_app}
+      - MYSQL_USER=${DB_USERNAME:-app_user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-app_password}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}" ]
+      interval: ${MYSQL_HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${MYSQL_HEALTHCHECK_TIMEOUT:-10s}
+      retries: ${MYSQL_HEALTHCHECK_RETRIES:-5}
+    deploy:
+      resources:
+        limits:
+          cpus: '${MYSQL_CPU_LIMIT:-1}'
+          memory: ${MYSQL_MEMORY_LIMIT:-1G}
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${APP_CONTAINER_NAME:-backend_fitness}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT_EXTERNAL:-3000}:${APP_PORT:-3000}"
+    volumes:
+      - .:/home/node/app
+      - /home/node/app/node_modules
+    environment:
+      - PORT=${APP_PORT:-3000}
+      - DATABASE_HOST=${DB_HOST:-db}
+      - DATABASE_PORT=${MYSQL_PORT_INTERNAL:-3306}
+      - DATABASE_USER=${DB_USERNAME:-app_user}
+      - DATABASE_PASSWORD=${DB_PASSWORD:-app_password}
+      - DATABASE_NAME=${DB_NAME:-db_app}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "-O", "-", "http://localhost:${APP_PORT:-3000}/health" ]
+      interval: ${APP_HEALTHCHECK_INTERVAL:-10s}
+      timeout: ${APP_HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${APP_HEALTHCHECK_RETRIES:-3}
+      start_period: ${APP_HEALTHCHECK_START_PERIOD:-30s}
+    deploy:
+      resources:
+        limits:
+          cpus: '${APP_CPU_LIMIT:-0.5}'
+          memory: ${APP_MEMORY_LIMIT:-512M}
+
+networks:
+  app-network:
+    name: ${NETWORK_NAME:-network-fitness}
+    driver: bridge
+    external: ${NETWORK_EXTERNAL:-false}
+
+volumes:
+  mysql_data:
+    driver: local
