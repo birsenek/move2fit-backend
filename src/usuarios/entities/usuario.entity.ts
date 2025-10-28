@@ -44,23 +44,23 @@ export class Usuario {
   @ApiProperty()
   senha: string;
 
-  @Column({ length: 5000 })
+  @Column({ length: 5000, nullable: true })
   @ApiProperty()
   foto: string;
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: false })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
   @ApiProperty()
   peso: number;
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: false })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
   @ApiProperty()
   altura: number;
 
-  @Column('decimal', { precision: 10, scale: 2})
+  @Column('decimal', { precision: 10, scale: 2, nullable: true})
   @ApiProperty()
   imc: number;
 
-  @Column({ length: 255 })
+  @Column({ length: 255, nullable: true })
   @ApiProperty()
   classificacao: string;
 }
