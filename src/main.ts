@@ -15,8 +15,12 @@ async function bootstrap() {
         'https://github.com/birsenek/PI-02'
       )
       .setVersion('0.3')
-      .addBearerAuth()
+      .addApiKey(
+        { type: 'apiKey', name: 'X-API-KEY', in: 'header' },
+        'api-key',
+      )
       .build();
+      
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('/swagger', app, document);
 
