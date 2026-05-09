@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, TransformFnParams } from 'class-transformer';
 import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Exercicio } from '../../exercicio/entities/exercicio.entity';
 
 @Entity({ name: 'tb_usuarios' })
 export class Usuario {
@@ -48,6 +49,11 @@ export class Usuario {
   @ApiProperty()
   foto: string;
 
+  @IsNotEmpty()
+  @Column({ length: 50, nullable: false, default: 'PERSONAL_TRAINER' })
+  @ApiProperty()
+  tipo: string;
+
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   @ApiProperty()
   peso: number;
@@ -63,4 +69,17 @@ export class Usuario {
   @Column({ length: 255, nullable: true })
   @ApiProperty()
   classificacao: string;
+
+  @Column({ type: 'date', nullable: true })
+  @ApiProperty()
+  ultimoLogin: Date;
+
+  @Column({ type: 'int', default: 0 })
+  @ApiProperty()
+  diasSeguidos: number;
+
+  @ApiProperty({ type: () => Exercicio })
+  @ManyToMany(() => Exercicio, (exercicio) => exercicio.aluno)
+  @JoinTable()
+  exercicio: Exercicio[];
 }

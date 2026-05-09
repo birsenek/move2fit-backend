@@ -23,6 +23,7 @@ export class ExercicioService {
       where: { id },
       relations: {
         categoria: true,
+        aluno: true,
       },
     });
 

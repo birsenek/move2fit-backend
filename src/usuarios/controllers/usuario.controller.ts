@@ -17,12 +17,11 @@ import { ApiKeyGuard } from 'src/auth/guard/api-key.guard';
 
 @ApiTags('Usuario')
 @Controller('/usuarios')
-@UseGuards(ApiKeyGuard)
-@ApiSecurity('api-key') 
 export class UsuarioController {
   constructor(private readonly usuarioService: UsuarioService) {}
 
   @UseGuards(ApiKeyGuard)
+  @ApiSecurity('api-key')
   @Get('/all')
   @HttpCode(HttpStatus.OK)
   findAll(): Promise<Usuario[]> {
@@ -30,6 +29,7 @@ export class UsuarioController {
   }
 
   @UseGuards(ApiKeyGuard)
+  @ApiSecurity('api-key')
   @Get('/:id')
   @HttpCode(HttpStatus.OK)
   findById(@Param('id', ParseIntPipe) id: number): Promise<Usuario> {
@@ -43,6 +43,7 @@ export class UsuarioController {
   }
 
   @UseGuards(ApiKeyGuard)
+  @ApiSecurity('api-key')
   @Put('/atualizar')
   @HttpCode(HttpStatus.OK)
   async update(@Body() usuario: Usuario): Promise<Usuario> {

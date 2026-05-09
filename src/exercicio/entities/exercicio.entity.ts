@@ -3,7 +3,7 @@ import { IsNotEmpty, Length } from 'class-validator';
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, ManyToMany } from 'typeorm';
 import { Categoria } from '../../categoria/entities/categoria.entity';
 import { ApiProperty } from '@nestjs/swagger';
-import { Aluno } from '../../aluno/entities/aluno.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 @Entity({ name: 'tb_exercicios' })
 export class Exercicio {
@@ -63,7 +63,7 @@ export class Exercicio {
   })
   categoria: Categoria;
 
-  @ApiProperty({ type: () => Aluno })
-  @ManyToMany(() => Aluno, (aluno) => aluno.exercicio)
-  aluno: Aluno[];
+  @ApiProperty({ type: () => Usuario })
+  @ManyToMany(() => Usuario, (usuario) => usuario.exercicio)
+  aluno: Usuario[];
 }

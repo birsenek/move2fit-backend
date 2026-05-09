@@ -10,11 +10,12 @@ import {
   Post,
   Put,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guard/jwt-auth.guard';
 import { AlunoService } from '../services/aluno.service';
-import { Aluno } from '../entities/aluno.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 @ApiTags('Aluno')
 @UseGuards(JwtAuthGuard)
@@ -25,26 +26,28 @@ export class AlunoController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  findAll(): Promise<Aluno[]> {
+  findAll(): Promise<Usuario[]> {
     return this.alunoService.findAll();
   }
 
   @Get('/:id')
   @HttpCode(HttpStatus.OK)
-  findById(@Param('id', ParseIntPipe) id: number): Promise<Aluno> {
+  findById(@Param('id', ParseIntPipe) id: number): Promise<Usuario> {
     return this.alunoService.findById(id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() aluno: Aluno): Promise<Aluno> {
-    return this.alunoService.create(aluno);
+  create(@Body() usuario: Usuario): Promise<Usuario> {
+    return this.alunoService.create(usuario);
   }
 
   @Put()
   @HttpCode(HttpStatus.OK)
-  update(@Body() aluno: Aluno): Promise<Aluno> {
-    return this.alunoService.update(aluno);
+  update(
+    @Body(new ValidationPipe({ skipMissingProperties: true })) usuario: Usuario,
+  ): Promise<Usuario> {
+    return this.alunoService.update(usuario);
   }
 
   @Delete('/:id')

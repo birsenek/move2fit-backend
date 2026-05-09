@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 import { Usuario } from '../entities/usuario.entity';
 import { Bcrypt } from '../../auth/bcrypt/bcrypt';
 
@@ -47,13 +47,14 @@ export class UsuarioService {
       throw new HttpException('O Usuario já existe!', HttpStatus.BAD_REQUEST);
     usuario.senha = await this.bcrypt.criptografarSenha(usuario.senha);
 
-    const { imc, classificacao } = this.calcularIMC(
-      usuario.peso,
-      usuario.altura,
-    );
-
-    usuario.imc = imc;
-    usuario.classificacao = classificacao;
+    if (usuario.peso && usuario.altura) {
+      const { imc, classificacao } = this.calcularIMC(
+        usuario.peso,
+        usuario.altura,
+      );
+      usuario.imc = imc;
+      usuario.classificacao = classificacao;
+    }
 
     return await this.usuarioRepository.save(usuario);
   }
@@ -66,16 +67,32 @@ export class UsuarioService {
     if (buscaUsuario && buscaUsuario.id !== usuario.id)
       throw new HttpException('O Usuario já existe!', HttpStatus.BAD_REQUEST);
 
-    const { imc, classificacao } = this.calcularIMC(
-      usuario.peso,
-      usuario.altura,
-    );
+    if (usuario.peso && usuario.altura) {
+      const { imc, classificacao } = this.calcularIMC(
+        usuario.peso,
+        usuario.altura,
+      );
+      usuario.imc = imc;
+      usuario.classificacao = classificacao;
+    }
 
-    usuario.imc = imc;
-    usuario.classificacao = classificacao;
-    usuario.senha = await this.bcrypt.criptografarSenha(usuario.senha);
+    if (usuario.senha) {
+      usuario.senha = await this.bcrypt.criptografarSenha(usuario.senha);
+    } else {
+      const existing = await this.findById(usuario.id);
+      usuario.senha = existing.senha;
+    }
 
     return await this.usuarioRepository.save(usuario);
+  }
+
+  async updateLoginStreak(id: number, diasSeguidos: number, ultimoLogin: Date): Promise<void> {
+    await this.usuarioRepository.update(id, { diasSeguidos, ultimoLogin });
+  }
+
+  async delete(id: number): Promise<DeleteResult> {
+    await this.findById(id);
+    return await this.usuarioRepository.delete(id);
   }
 
   calcularIMC = (

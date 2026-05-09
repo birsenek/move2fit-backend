@@ -12,7 +12,8 @@ async function bootstrap() {
       .setDescription('Projeto Fitness')
       .setContact(
         'Grupo 06',
-        'https://github.com/birsenek/PI-02'
+        'https://github.com/birsenek/PI-02',
+        ''
       )
       .setVersion('0.3')
       .addApiKey(
