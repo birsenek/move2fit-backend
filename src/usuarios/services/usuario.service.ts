@@ -1,6 +1,7 @@
+import { Avaliacao } from '../../avaliacoes/avaliacao.entity';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DeleteResult, EntityManager, Repository } from 'typeorm';
 import { Usuario } from '../entities/usuario.entity';
 import { Bcrypt } from '../../auth/bcrypt/bcrypt';
 
@@ -13,11 +14,13 @@ export class UsuarioService {
   ) {}
 
   async findByUsuario(usuario: string): Promise<Usuario | null> {
-    return await this.usuarioRepository.findOne({
-      where: {
-        usuario: usuario,
-      },
-    });
+    if (typeof usuario !== 'string') return null;
+    return this.usuarioRepository
+      .createQueryBuilder('conta')
+      .where('LOWER(TRIM(conta.usuario)) = :email', {
+        email: usuario.trim().toLowerCase(),
+      })
+      .getOne();
   }
 
   async findAll(): Promise<Usuario[]> {
@@ -40,23 +43,72 @@ export class UsuarioService {
     return usuario;
   }
 
-  async create(usuario: Usuario): Promise<Usuario> {
-    const buscaUsuario = await this.findByUsuario(usuario.usuario);
-
-    if (buscaUsuario)
-      throw new HttpException('O Usuario já existe!', HttpStatus.BAD_REQUEST);
-    usuario.senha = await this.bcrypt.criptografarSenha(usuario.senha);
-
-    if (usuario.peso && usuario.altura) {
-      const { imc, classificacao } = this.calcularIMC(
-        usuario.peso,
-        usuario.altura,
-      );
-      usuario.imc = imc;
-      usuario.classificacao = classificacao;
-    }
-
-    return await this.usuarioRepository.save(usuario);
+  async create(
+    usuario: Usuario,
+    manager = this.usuarioRepository.manager,
+  ): Promise<Usuario> {
+    const email = usuario.usuario.trim().toLowerCase();
+    return manager.transaction(async (transaction: EntityManager) => {
+      await transaction.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        email,
+      ]);
+      const repository = transaction.getRepository(Usuario);
+      const existing = await repository
+        .createQueryBuilder('conta')
+        .where('LOWER(TRIM(conta.usuario)) = :email', { email })
+        .getOne();
+      if (existing)
+        throw new HttpException('O usuário já existe!', HttpStatus.CONFLICT);
+      if (!['ALUNO', 'PERSONAL_TRAINER'].includes(usuario.tipo)) {
+        throw new HttpException(
+          'Tipo de usuário inválido.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      // Não aceitar IDs ou relações enviados no cadastro público.
+      const novo = repository.create({
+        nome: usuario.nome,
+        usuario: email,
+        tipo: usuario.tipo,
+        senha: await this.bcrypt.criptografarSenha(usuario.senha),
+        foto: usuario.foto,
+      });
+      const salvo = await repository.save(novo);
+      const medidas = usuario as Usuario & { peso?: number; altura?: number };
+      if (salvo.tipo === 'ALUNO' && medidas.peso && medidas.altura) {
+        const peso = Number(medidas.peso),
+          altura = Number(medidas.altura);
+        if (
+          !Number.isFinite(peso) ||
+          !Number.isFinite(altura) ||
+          peso < 1 ||
+          peso > 500 ||
+          altura < 0.3 ||
+          altura > 2.7
+        )
+          throw new HttpException(
+            'Peso ou altura inválidos.',
+            HttpStatus.BAD_REQUEST,
+          );
+        const dataColeta = new Date().toLocaleDateString('en-CA', {
+          timeZone: 'America/Sao_Paulo',
+        });
+        const date = new Date(dataColeta + 'T00:00:00Z');
+        date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+        await transaction
+          .getRepository(Avaliacao)
+          .save({
+            alunoId: salvo.id,
+            peso,
+            altura,
+            ...this.calcularIMC(peso, altura),
+            dataColeta,
+            semanaInicio: date.toISOString().slice(0, 10),
+            origem: 'MANUAL',
+          });
+      }
+      return salvo;
+    });
   }
 
   async update(usuario: Usuario): Promise<Usuario> {
@@ -66,15 +118,6 @@ export class UsuarioService {
 
     if (buscaUsuario && buscaUsuario.id !== usuario.id)
       throw new HttpException('O Usuario já existe!', HttpStatus.BAD_REQUEST);
-
-    if (usuario.peso && usuario.altura) {
-      const { imc, classificacao } = this.calcularIMC(
-        usuario.peso,
-        usuario.altura,
-      );
-      usuario.imc = imc;
-      usuario.classificacao = classificacao;
-    }
 
     if (usuario.senha) {
       usuario.senha = await this.bcrypt.criptografarSenha(usuario.senha);
@@ -86,7 +129,11 @@ export class UsuarioService {
     return await this.usuarioRepository.save(usuario);
   }
 
-  async updateLoginStreak(id: number, diasSeguidos: number, ultimoLogin: Date): Promise<void> {
+  async updateLoginStreak(
+    id: number,
+    diasSeguidos: number,
+    ultimoLogin: Date,
+  ): Promise<void> {
     await this.usuarioRepository.update(id, { diasSeguidos, ultimoLogin });
   }
 
@@ -111,10 +158,10 @@ export class UsuarioService {
 
     const classificarIMC = (imc: number): string => {
       if (imc < 18.5) return 'Abaixo do peso';
-      if (imc < 24.9) return 'Peso normal';
-      if (imc < 29.9) return 'Sobrepeso';
-      if (imc < 34.9) return 'Obesidade Grau I';
-      if (imc < 39.9) return 'Obesidade Grau II';
+      if (imc < 25) return 'Peso normal';
+      if (imc < 30) return 'Sobrepeso';
+      if (imc < 35) return 'Obesidade Grau I';
+      if (imc < 40) return 'Obesidade Grau II';
       return 'Obesidade Grau III (Mórbida)';
     };
 

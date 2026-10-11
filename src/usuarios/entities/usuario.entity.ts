@@ -1,7 +1,15 @@
+import { Avaliacao } from '../../avaliacoes/avaliacao.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, TransformFnParams } from 'class-transformer';
 import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
-import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  PrimaryGeneratedColumn,
+  OneToMany,
+} from 'typeorm';
 import { Exercicio } from '../../exercicio/entities/exercicio.entity';
 
 @Entity({ name: 'tb_usuarios' })
@@ -54,21 +62,8 @@ export class Usuario {
   @ApiProperty()
   tipo: string;
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: true })
-  @ApiProperty()
-  peso: number;
-
-  @Column('decimal', { precision: 10, scale: 2, nullable: true })
-  @ApiProperty()
-  altura: number;
-
-  @Column('decimal', { precision: 10, scale: 2, nullable: true})
-  @ApiProperty()
-  imc: number;
-
-  @Column({ length: 255, nullable: true })
-  @ApiProperty()
-  classificacao: string;
+  @OneToMany(() => Avaliacao, (avaliacao) => avaliacao.aluno)
+  avaliacoes: Avaliacao[];
 
   @Column({ type: 'date', nullable: true })
   @ApiProperty()
@@ -82,4 +77,19 @@ export class Usuario {
   @ManyToMany(() => Exercicio, (exercicio) => exercicio.aluno)
   @JoinTable()
   exercicio: Exercicio[];
+
+  @ManyToMany(() => Usuario, (treinador) => treinador.alunos, {
+    onDelete: 'CASCADE',
+  })
+  @JoinTable({
+    name: 'tb_treinador_aluno',
+    joinColumn: { name: 'alunoId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'treinadorId', referencedColumnName: 'id' },
+  })
+  treinadores: Usuario[];
+
+  @ManyToMany(() => Usuario, (aluno) => aluno.treinadores, {
+    onDelete: 'CASCADE',
+  })
+  alunos: Usuario[];
 }

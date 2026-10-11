@@ -59,7 +59,11 @@ export class AuthService {
       }
     }
 
-    await this.usuarioService.updateLoginStreak(buscaUsuario.id, diasSeguidos, hoje);
+    await this.usuarioService.updateLoginStreak(
+      buscaUsuario.id,
+      diasSeguidos,
+      hoje,
+    );
 
     return {
       id: buscaUsuario.id,
@@ -68,10 +72,6 @@ export class AuthService {
       senha: '',
       foto: buscaUsuario.foto,
       tipo: buscaUsuario.tipo,
-      peso: buscaUsuario.peso,
-      altura: buscaUsuario.altura,
-      imc: buscaUsuario.imc,
-      classificacao: buscaUsuario.classificacao,
       diasSeguidos,
       token: `Bearer ${this.jwtService.sign(payload)}`,
     };

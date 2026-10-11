@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Repository } from 'typeorm';
 import { Exercicio } from '../entities/exercicio.entity';
@@ -23,7 +28,6 @@ export class ExercicioService {
       where: { id },
       relations: {
         categoria: true,
-        aluno: true,
       },
     });
 
@@ -53,9 +57,8 @@ export class ExercicioService {
     return await this.exercicioRepository.findBy({ id: In(ids) });
   }
 
-
   async create(exercicio: Exercicio): Promise<Exercicio> {
-    return await this.exercicioRepository.save(exercicio);
+    return await this.exercicioRepository.save(this.catalogFields(exercicio));
   }
 
   async update(exercio: Exercicio): Promise<Exercicio> {
@@ -65,7 +68,30 @@ export class ExercicioService {
       throw new HttpException('Exercicio não encontrado', HttpStatus.NOT_FOUND);
     }
 
-    return await this.exercicioRepository.save(exercio);
+    return await this.exercicioRepository.save({
+      ...this.catalogFields(exercio),
+      id: exercicioExistente.id,
+    });
+  }
+
+  private catalogFields(exercicio: Exercicio) {
+    if (exercicio.aluno !== undefined) {
+      throw new BadRequestException(
+        'Associe exercícios pelas rotas de alunos vinculados.',
+      );
+    }
+    // O catálogo não pode expor nem modificar alunos por relações aninhadas.
+    return this.exercicioRepository.create({
+      nome: exercicio.nome,
+      descricao: exercicio.descricao,
+      carga: exercicio.carga,
+      repeticao: exercicio.repeticao,
+      tempo: exercicio.tempo,
+      foto: exercicio.foto,
+      categoria: exercicio.categoria?.id
+        ? { id: exercicio.categoria.id }
+        : undefined,
+    });
   }
 
   async delete(id: number): Promise<void> {

@@ -1,3 +1,4 @@
+import { Avaliacao } from '../../avaliacoes/avaliacao.entity';
 import { Injectable } from '@nestjs/common';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
 import { Categoria } from '../../categoria/entities/categoria.entity';
@@ -9,13 +10,11 @@ export class DevService implements TypeOrmOptionsFactory {
     return {
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
-      port: process.env.DB_PORT
-        ? parseInt(process.env.DB_PORT)
-        : 5432,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
       username: process.env.DB_USERNAME || 'movetofit',
       password: process.env.DB_PASSWORD || 'move2fit',
       database: process.env.DB_NAME || 'movetofit',
-      entities: [Categoria, Usuario, Exercicio],
+      entities: [Categoria, Usuario, Exercicio, Avaliacao],
       synchronize: true,
     };
   }
